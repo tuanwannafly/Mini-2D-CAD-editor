@@ -23,6 +23,10 @@ public partial class RectangleShape : Shape
     public override BoundingBox GetBounds() => new(
         TopLeft.X, TopLeft.Y, TopLeft.X + Width, TopLeft.Y + Height);
 
+    public override Point2D GetCenter() => new(
+        TopLeft.X + Width / 2,
+        TopLeft.Y + Height / 2);
+
     public override bool HitTest(Point2D point, double tolerance = 3.0)
     {
         double right = TopLeft.X + Width;

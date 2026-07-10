@@ -1,0 +1,84 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="87a4140f-7d26-4d3b-bf14-829d98982700" name="ASUS@DESKTOP-3DD244M 2026-07-11 04:32:44" runUser="DESKTOP-3DD244M\ASUS" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-07-11T04:32:44.2060186+07:00" queuing="2026-07-11T04:32:44.2060191+07:00" start="2026-07-11T04:32:43.3040329+07:00" finish="2026-07-11T04:32:44.2145196+07:00" />
+  <TestSettings name="default" id="21d88ccf-ccd6-48c9-b60b-52af623a3c94">
+    <Deployment runDeploymentRoot="ASUS_DESKTOP-3DD244M_2026-07-11_04_32_44" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="170feecf-cd65-4496-8106-2e76f7850402" testId="3f6c1677-b422-cbea-8068-6c99eed9c230" testName="CadEditor.Tests.Services.SqlitePersistenceServiceTests.Save_StoresTypeAndPropertiesJsonColumns" computerName="DESKTOP-3DD244M" duration="00:00:00.0082898" startTime="2026-07-11T04:32:44.0671358+07:00" endTime="2026-07-11T04:32:44.0672675+07:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="170feecf-cd65-4496-8106-2e76f7850402">
+      <Output>
+        <ErrorInfo>
+          <Message>System.IO.IOException : The process cannot access the file 'C:\Users\ASUS\AppData\Local\Temp\cad-schema-92ee9ae5e3374e049d49aa566a6db26d.db' because it is being used by another process.</Message>
+          <StackTrace>   at System.IO.FileSystem.DeleteFile(String fullPath)&#xD;
+   at CadEditor.Tests.Services.SqlitePersistenceServiceTests.Save_StoresTypeAndPropertiesJsonColumns() in C:\work\clone\Mini-2D-CAD-editor\Tests\Services\SqlitePersistenceServiceTests.cs:line 78&#xD;
+   at CadEditor.Tests.Services.SqlitePersistenceServiceTests.Save_StoresTypeAndPropertiesJsonColumns() in C:\work\clone\Mini-2D-CAD-editor\Tests\Services\SqlitePersistenceServiceTests.cs:line 55&#xD;
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)&#xD;
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="7cdc7453-3ee2-4d71-bd28-ee33d91d361e" testId="3594ffe1-95b2-0b6b-bf5a-b0da440991cd" testName="CadEditor.Tests.Services.SqlitePersistenceServiceTests.SaveThenLoad_RoundTripsPolymorphicShapes" computerName="DESKTOP-3DD244M" duration="00:00:00.1232045" startTime="2026-07-11T04:32:43.9146073+07:00" endTime="2026-07-11T04:32:44.0512182+07:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="7cdc7453-3ee2-4d71-bd28-ee33d91d361e">
+      <Output>
+        <ErrorInfo>
+          <Message>System.IO.IOException : The process cannot access the file 'C:\Users\ASUS\AppData\Local\Temp\cad-shapes-736d59e2134741daa4c92692c4e6b11e.db' because it is being used by another process.</Message>
+          <StackTrace>   at System.IO.FileSystem.DeleteFile(String fullPath)&#xD;
+   at CadEditor.Tests.Services.SqlitePersistenceServiceTests.SaveThenLoad_RoundTripsPolymorphicShapes() in C:\work\clone\Mini-2D-CAD-editor\Tests\Services\SqlitePersistenceServiceTests.cs:line 48&#xD;
+   at CadEditor.Tests.Services.SqlitePersistenceServiceTests.SaveThenLoad_RoundTripsPolymorphicShapes() in C:\work\clone\Mini-2D-CAD-editor\Tests\Services\SqlitePersistenceServiceTests.cs:line 12&#xD;
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)&#xD;
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="CadEditor.Tests.Services.SqlitePersistenceServiceTests.SaveThenLoad_RoundTripsPolymorphicShapes" storage="c:\work\clone\mini-2d-cad-editor\tests\bin\debug\net10.0-windows\cadeditor.tests.dll" id="3594ffe1-95b2-0b6b-bf5a-b0da440991cd">
+      <Execution id="7cdc7453-3ee2-4d71-bd28-ee33d91d361e" />
+      <TestMethod codeBase="C:\work\clone\Mini-2D-CAD-editor\Tests\bin\Debug\net10.0-windows\CadEditor.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="CadEditor.Tests.Services.SqlitePersistenceServiceTests" name="SaveThenLoad_RoundTripsPolymorphicShapes" />
+    </UnitTest>
+    <UnitTest name="CadEditor.Tests.Services.SqlitePersistenceServiceTests.Save_StoresTypeAndPropertiesJsonColumns" storage="c:\work\clone\mini-2d-cad-editor\tests\bin\debug\net10.0-windows\cadeditor.tests.dll" id="3f6c1677-b422-cbea-8068-6c99eed9c230">
+      <Execution id="170feecf-cd65-4496-8106-2e76f7850402" />
+      <TestMethod codeBase="C:\work\clone\Mini-2D-CAD-editor\Tests\bin\Debug\net10.0-windows\CadEditor.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="CadEditor.Tests.Services.SqlitePersistenceServiceTests" name="Save_StoresTypeAndPropertiesJsonColumns" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="3f6c1677-b422-cbea-8068-6c99eed9c230" executionId="170feecf-cd65-4496-8106-2e76f7850402" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="3594ffe1-95b2-0b6b-bf5a-b0da440991cd" executionId="7cdc7453-3ee2-4d71-bd28-ee33d91d361e" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Failed">
+    <Counters total="2" executed="2" passed="0" failed="2" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.4+50e68bbb8b (64-bit .NET 10.0.1)&#xD;
+[xUnit.net 00:00:00.07]   Discovering: CadEditor.Tests&#xD;
+[xUnit.net 00:00:00.14]   Discovered:  CadEditor.Tests&#xD;
+[xUnit.net 00:00:00.16]   Starting:    CadEditor.Tests&#xD;
+[xUnit.net 00:00:00.32]       System.IO.IOException : The process cannot access the file 'C:\Users\ASUS\AppData\Local\Temp\cad-shapes-736d59e2134741daa4c92692c4e6b11e.db' because it is being used by another process.&#xD;
+[xUnit.net 00:00:00.32]       Stack Trace:&#xD;
+[xUnit.net 00:00:00.32]            at System.IO.FileSystem.DeleteFile(String fullPath)&#xD;
+[xUnit.net 00:00:00.32]         C:\work\clone\Mini-2D-CAD-editor\Tests\Services\SqlitePersistenceServiceTests.cs(48,0): at CadEditor.Tests.Services.SqlitePersistenceServiceTests.SaveThenLoad_RoundTripsPolymorphicShapes()&#xD;
+[xUnit.net 00:00:00.32]         C:\work\clone\Mini-2D-CAD-editor\Tests\Services\SqlitePersistenceServiceTests.cs(12,0): at CadEditor.Tests.Services.SqlitePersistenceServiceTests.SaveThenLoad_RoundTripsPolymorphicShapes()&#xD;
+[xUnit.net 00:00:00.32]            at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)&#xD;
+[xUnit.net 00:00:00.32]            at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)&#xD;
+[xUnit.net 00:00:00.33]       System.IO.IOException : The process cannot access the file 'C:\Users\ASUS\AppData\Local\Temp\cad-schema-92ee9ae5e3374e049d49aa566a6db26d.db' because it is being used by another process.&#xD;
+[xUnit.net 00:00:00.33]       Stack Trace:&#xD;
+[xUnit.net 00:00:00.33]            at System.IO.FileSystem.DeleteFile(String fullPath)&#xD;
+[xUnit.net 00:00:00.33]         C:\work\clone\Mini-2D-CAD-editor\Tests\Services\SqlitePersistenceServiceTests.cs(78,0): at CadEditor.Tests.Services.SqlitePersistenceServiceTests.Save_StoresTypeAndPropertiesJsonColumns()&#xD;
+[xUnit.net 00:00:00.33]         C:\work\clone\Mini-2D-CAD-editor\Tests\Services\SqlitePersistenceServiceTests.cs(55,0): at CadEditor.Tests.Services.SqlitePersistenceServiceTests.Save_StoresTypeAndPropertiesJsonColumns()&#xD;
+[xUnit.net 00:00:00.33]            at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)&#xD;
+[xUnit.net 00:00:00.33]            at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)&#xD;
+[xUnit.net 00:00:00.34]   Finished:    CadEditor.Tests&#xD;
+</StdOut>
+    </Output>
+    <RunInfos>
+      <RunInfo computerName="DESKTOP-3DD244M" outcome="Error" timestamp="2026-07-11T04:32:44.0540149+07:00">
+        <Text>[xUnit.net 00:00:00.32]     CadEditor.Tests.Services.SqlitePersistenceServiceTests.SaveThenLoad_RoundTripsPolymorphicShapes [FAIL]</Text>
+      </RunInfo>
+      <RunInfo computerName="DESKTOP-3DD244M" outcome="Error" timestamp="2026-07-11T04:32:44.0677357+07:00">
+        <Text>[xUnit.net 00:00:00.33]     CadEditor.Tests.Services.SqlitePersistenceServiceTests.Save_StoresTypeAndPropertiesJsonColumns [FAIL]</Text>
+      </RunInfo>
+    </RunInfos>
+  </ResultSummary>
+</TestRun>

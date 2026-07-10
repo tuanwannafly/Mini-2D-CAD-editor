@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("CadEditor.Tests")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+404e32f15f8a6211a96460bec5fc356e6733ebfe")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a7e1146182982e2be97edd62ec4772ed65c19db1")]
 [assembly: System.Reflection.AssemblyProductAttribute("CadEditor.Tests")]
 [assembly: System.Reflection.AssemblyTitleAttribute("CadEditor.Tests")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

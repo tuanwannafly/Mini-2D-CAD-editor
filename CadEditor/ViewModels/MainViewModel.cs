@@ -16,6 +16,13 @@ public partial class MainViewModel : ViewModelBase
     public ObservableCollection<string> CliLog { get; } = new();
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSelectToolActive))]
+    [NotifyPropertyChangedFor(nameof(IsLineToolActive))]
+    [NotifyPropertyChangedFor(nameof(IsCircleToolActive))]
+    [NotifyPropertyChangedFor(nameof(IsRectToolActive))]
+    [NotifyPropertyChangedFor(nameof(IsPolygonToolActive))]
+    [NotifyPropertyChangedFor(nameof(IsMoveToolActive))]
+    [NotifyPropertyChangedFor(nameof(CurrentToolLabel))]
     private DrawingTool currentTool = DrawingTool.Select;
 
     [ObservableProperty]
@@ -76,7 +83,49 @@ public partial class MainViewModel : ViewModelBase
 
     public string MousePositionStatus => $"X: {MouseX:0.0}, Y: {MouseY:0.0}";
 
-    public string SelectedShapeStatus => SelectedShape == null ? "Selected: None" : $"Selected: {GetShapeDisplayName(SelectedShape)}";
+    public string SelectedShapeStatus => SelectedShape == null ? "None" : GetShapeDisplayName(SelectedShape);
+
+    public string CurrentToolLabel => CurrentTool switch
+    {
+        DrawingTool.None => "None",
+        _ => CurrentTool.ToString()
+    };
+
+    public bool IsSelectToolActive
+    {
+        get => CurrentTool == DrawingTool.Select;
+        set { if (value) SelectToolCommand.Execute(DrawingTool.Select); }
+    }
+
+    public bool IsLineToolActive
+    {
+        get => CurrentTool == DrawingTool.Line;
+        set { if (value) SelectToolCommand.Execute(DrawingTool.Line); }
+    }
+
+    public bool IsCircleToolActive
+    {
+        get => CurrentTool == DrawingTool.Circle;
+        set { if (value) SelectToolCommand.Execute(DrawingTool.Circle); }
+    }
+
+    public bool IsRectToolActive
+    {
+        get => CurrentTool == DrawingTool.Rectangle;
+        set { if (value) SelectToolCommand.Execute(DrawingTool.Rectangle); }
+    }
+
+    public bool IsPolygonToolActive
+    {
+        get => CurrentTool == DrawingTool.Polygon;
+        set { if (value) SelectToolCommand.Execute(DrawingTool.Polygon); }
+    }
+
+    public bool IsMoveToolActive
+    {
+        get => CurrentTool == DrawingTool.None && SelectedShape != null;
+        set { if (value) SelectToolCommand.Execute(DrawingTool.None); }
+    }
 
     public ObservableCollection<TransformHandleInfo> TransformHandles { get; } = new();
 
@@ -297,8 +346,11 @@ public partial class MainViewModel : ViewModelBase
 
         if (movingShape != null)
         {
+            var boundsBefore = movingShape.GetBounds();
             ShapeMover.MoveBy(movingShape, point.X - dragStart.X, point.Y - dragStart.Y);
             dragStart = point;
+            if (movingShape.GetBounds() != boundsBefore)
+                RebuildTransformHandles();
             return;
         }
 
@@ -428,8 +480,8 @@ public partial class MainViewModel : ViewModelBase
         const double hitSize = 14;
         foreach (var h in TransformHandles)
         {
-            if (Math.Abs(point.X - (h.X + 5)) < hitSize / 2 &&
-                Math.Abs(point.Y - (h.Y + 5)) < hitSize / 2)
+            if (Math.Abs(point.X - (h.X + 6)) < hitSize / 2 &&
+                Math.Abs(point.Y - (h.Y + 6)) < hitSize / 2)
                 return h.Type;
         }
         return null;
@@ -486,8 +538,7 @@ public partial class MainViewModel : ViewModelBase
         initialScaleX = SelectedShape.ScaleX;
         initialScaleY = SelectedShape.ScaleY;
 
-        var bounds = SelectedShape.GetBounds();
-        shapeCenter = new Point2D(bounds.MinX + bounds.Width / 2, bounds.MinY + bounds.Height / 2);
+        shapeCenter = SelectedShape.GetCenter();
     }
 
     private void UpdateTransform(Point2D point)
@@ -538,12 +589,14 @@ public partial class MainViewModel : ViewModelBase
         RotationLineY2 = 0;
         if (SelectedShape == null) return;
 
-        var bounds = SelectedShape.GetBounds();
+        // Use axis-aligned bounds (rotation/scale already applied) so the visual
+        // handles wrap the shape exactly as it appears on screen.
+        var bounds = SelectedShape.GetAxisAlignedBounds();
         var center = new Point2D(
             bounds.MinX + bounds.Width / 2,
             bounds.MinY + bounds.Height / 2);
 
-        var raw = new[]
+        var corners = new[]
         {
             new Point2D(bounds.MinX, bounds.MinY),       // TL
             new Point2D(bounds.MaxX, bounds.MinY),       // TR
@@ -551,12 +604,9 @@ public partial class MainViewModel : ViewModelBase
             new Point2D(bounds.MinX, bounds.MaxY)        // BL
         };
 
-        var scaled = raw.Select(p => ScalePoint(p, center, SelectedShape.ScaleX, SelectedShape.ScaleY)).ToArray();
-        var transformed = scaled.Select(p => RotatePoint(p, center, SelectedShape.RotationDeg)).ToArray();
-
         var types = new[] { HandleType.TopLeft, HandleType.TopRight, HandleType.BottomRight, HandleType.BottomLeft };
         for (int i = 0; i < 4; i++)
-            TransformHandles.Add(new TransformHandleInfo { X = transformed[i].X - 5, Y = transformed[i].Y - 5, Type = types[i] });
+            TransformHandles.Add(new TransformHandleInfo { X = corners[i].X - 6, Y = corners[i].Y - 6, Type = types[i] });
 
         var edgePairs = new[] { (0, 1), (1, 2), (2, 3), (3, 0) };
         var edgeTypes = new[] { HandleType.TopCenter, HandleType.MiddleRight, HandleType.BottomCenter, HandleType.MiddleLeft };
@@ -565,25 +615,26 @@ public partial class MainViewModel : ViewModelBase
             var (a, b) = edgePairs[i];
             TransformHandles.Add(new TransformHandleInfo
             {
-                X = (transformed[a].X + transformed[b].X) / 2 - 5,
-                Y = (transformed[a].Y + transformed[b].Y) / 2 - 5,
+                X = (corners[a].X + corners[b].X) / 2 - 6,
+                Y = (corners[a].Y + corners[b].Y) / 2 - 6,
                 Type = edgeTypes[i]
             });
         }
 
-        // Rotation handle: perpendicular outward from top edge
-        var topEdge = (transformed[0], transformed[1]);
-        double edx = topEdge.Item2.X - topEdge.Item1.X;
-        double edy = topEdge.Item2.Y - topEdge.Item1.Y;
+        // Rotation handle: outward from the top edge midpoint
+        var topA = corners[0];
+        var topB = corners[1];
+        double edx = topB.X - topA.X;
+        double edy = topB.Y - topA.Y;
         double elen = Math.Sqrt(edx * edx + edy * edy);
         if (elen > 0)
         {
-            double rhx = (topEdge.Item1.X + topEdge.Item2.X) / 2 + (-edy / elen) * 28;
-            double rhy = (topEdge.Item1.Y + topEdge.Item2.Y) / 2 + (edx / elen) * 28;
-            TransformHandles.Add(new TransformHandleInfo { X = rhx - 5, Y = rhy - 5, Type = HandleType.Rotation });
+            double rhx = (topA.X + topB.X) / 2 + (-edy / elen) * 28;
+            double rhy = (topA.Y + topB.Y) / 2 + (edx / elen) * 28;
+            TransformHandles.Add(new TransformHandleInfo { X = rhx - 6, Y = rhy - 6, Type = HandleType.Rotation });
 
-            RotationLineX1 = (topEdge.Item1.X + topEdge.Item2.X) / 2;
-            RotationLineY1 = (topEdge.Item1.Y + topEdge.Item2.Y) / 2;
+            RotationLineX1 = (topA.X + topB.X) / 2;
+            RotationLineY1 = (topA.Y + topB.Y) / 2;
             RotationLineX2 = rhx;
             RotationLineY2 = rhy;
         }
