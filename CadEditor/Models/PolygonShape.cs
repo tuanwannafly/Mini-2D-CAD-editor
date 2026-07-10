@@ -28,4 +28,18 @@ public partial class PolygonShape : Shape
             Vertices.Min(v => v.X), Vertices.Min(v => v.Y),
             Vertices.Max(v => v.X), Vertices.Max(v => v.Y));
     }
+    
+    public void UpdateLastVertex(Point2D point)
+    {
+        if (Vertices.Count == 0) return;
+        Vertices[^1] = point;
+        OnPropertyChanged(nameof(Vertices));
+    }
+
+    public void RemoveLastVertex()
+    {
+        if (Vertices.Count == 0) return;
+        Vertices.RemoveAt(Vertices.Count - 1);
+        OnPropertyChanged(nameof(Vertices));
+    }
 }
