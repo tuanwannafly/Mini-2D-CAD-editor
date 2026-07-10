@@ -1,9 +1,11 @@
 using System.Collections.ObjectModel;
+using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CadEditor.Cli;
 using CadEditor.Commands;
 using CadEditor.Models;
+using CadEditor.Services;
 
 namespace CadEditor.ViewModels;
 
@@ -51,6 +53,18 @@ public partial class MainViewModel : ViewModelBase
 
     [ObservableProperty]
     private double gridSize = SnapService.DefaultGridSize;
+
+    [ObservableProperty]
+    private PersistenceFormat selectedPersistenceFormat = PersistenceFormat.Json;
+
+    [ObservableProperty]
+    private string persistencePath = "drawing.json";
+
+    [ObservableProperty]
+    private string persistenceStatus = string.Empty;
+
+    public Array PersistenceFormats { get; } = Enum.GetValues(typeof(PersistenceFormat));
+
     public ObservableCollection<TransformHandleInfo> TransformHandles { get; } = new();
 
     private readonly UndoRedoManager undoRedoManager = new();
@@ -166,6 +180,39 @@ public partial class MainViewModel : ViewModelBase
             default:
                 return "Lệnh không được hỗ trợ.";
         }
+    }
+
+    [RelayCommand]
+    private void SaveDrawing()
+    {
+        var service = PersistenceServiceFactory.Create(SelectedPersistenceFormat);
+        service.Save(PersistencePath, Shapes);
+        PersistenceStatus = $"Saved {Shapes.Count} shapes to {PersistencePath}.";
+    }
+
+    [RelayCommand]
+    private void LoadDrawing()
+    {
+        var service = PersistenceServiceFactory.Create(SelectedPersistenceFormat);
+        var loadedShapes = service.Load(PersistencePath);
+
+        Shapes.Clear();
+        foreach (var shape in loadedShapes)
+        {
+            Shapes.Add(shape);
+        }
+
+        SelectedShape = null;
+        PreviewShape = null;
+        TransformHandles.Clear();
+        RefreshUndoRedoState();
+        PersistenceStatus = $"Loaded {Shapes.Count} shapes from {PersistencePath}.";
+    }
+
+    partial void OnSelectedPersistenceFormatChanged(PersistenceFormat value)
+    {
+        string extension = value == PersistenceFormat.Sqlite ? ".db" : ".json";
+        PersistencePath = Path.ChangeExtension(PersistencePath, extension) ?? $"drawing{extension}";
     }
 
     public void OnCanvasMouseDown(Point2D point)
