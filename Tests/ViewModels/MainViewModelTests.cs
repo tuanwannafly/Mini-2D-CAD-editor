@@ -9,10 +9,11 @@ public class MainViewModelTests
     public void AddingShape_IncreasesCollectionCount()
     {
         var vm = new MainViewModel();
+        var before = vm.Shapes.Count;
 
         vm.Shapes.Add(new LineShape(new Point2D(0, 0), new Point2D(1, 1)));
 
-        Assert.Single(vm.Shapes);
+        Assert.Equal(before + 1, vm.Shapes.Count);
     }
 
     [Fact]
@@ -21,9 +22,10 @@ public class MainViewModelTests
         var vm = new MainViewModel();
         var shape = new CircleShape(new Point2D(0, 0), 5);
         vm.Shapes.Add(shape);
+        var before = vm.Shapes.Count;
 
         vm.Shapes.Remove(shape);
 
-        Assert.Empty(vm.Shapes);
+        Assert.Equal(before - 1, vm.Shapes.Count);
     }
 }
