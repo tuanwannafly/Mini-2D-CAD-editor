@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/Tests/">
+    <Project Path="Tests/CadEditor.Tests.csproj" />
+  </Folder>
+  <Project Path="CadEditor/CadEditor.csproj" />
+</Solution>
