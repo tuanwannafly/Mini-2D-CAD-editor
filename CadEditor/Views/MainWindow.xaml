@@ -15,15 +15,29 @@
         <converters:Point2DToPointConverter x:Key="Point2DToPointConverter" />
         <converters:TopLeftSizeToRectConverter x:Key="TopLeftSizeToRectConverter" />
         <converters:Point2DListToPointCollectionConverter x:Key="Point2DListToPointCollectionConverter" />
+        <converters:NotNullToVisibilityConverter x:Key="NotNullToVisibilityConverter" />
+
+        <Style x:Key="ShapeStrokeStyle" TargetType="Shape">
+            <Setter Property="Stroke" Value="{Binding StrokeColor}" />
+            <Setter Property="StrokeThickness" Value="{Binding StrokeThickness}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                    <Setter Property="Stroke" Value="#FF8C00" />
+                    <Setter Property="StrokeThickness" Value="4" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
 
         <DataTemplate DataType="{x:Type models:LineShape}">
             <Line X1="{Binding Start.X}" Y1="{Binding Start.Y}"
                   X2="{Binding End.X}" Y2="{Binding End.Y}"
-                  Stroke="{Binding StrokeColor}" StrokeThickness="{Binding StrokeThickness}" />
+                  Stroke="{Binding StrokeColor}" StrokeThickness="{Binding StrokeThickness}"
+                  RenderTransform="{Binding RenderTransform}" RenderTransformOrigin="0.5,0.5" />
         </DataTemplate>
 
         <DataTemplate DataType="{x:Type models:CircleShape}">
-            <Path Stroke="{Binding StrokeColor}" StrokeThickness="{Binding StrokeThickness}" Fill="Transparent">
+            <Path Stroke="{Binding StrokeColor}" StrokeThickness="{Binding StrokeThickness}" Fill="Transparent"
+                  RenderTransform="{Binding RenderTransform}" RenderTransformOrigin="0.5,0.5">
                 <Path.Data>
                     <EllipseGeometry Center="{Binding Center, Converter={StaticResource Point2DToPointConverter}}"
                                       RadiusX="{Binding Radius}" RadiusY="{Binding Radius}" />
@@ -32,7 +46,7 @@
         </DataTemplate>
 
         <DataTemplate DataType="{x:Type models:RectangleShape}">
-            <Path Stroke="{Binding StrokeColor}" StrokeThickness="{Binding StrokeThickness}" Fill="Transparent">
+            <Path Style="{StaticResource ShapeStrokeStyle}" Fill="Transparent">
                 <Path.Data>
                     <RectangleGeometry>
                         <RectangleGeometry.Rect>
@@ -49,13 +63,11 @@
 
         <DataTemplate DataType="{x:Type models:PolygonShape}">
             <Polygon Points="{Binding Vertices, Converter={StaticResource Point2DListToPointCollectionConverter}}"
-                     Stroke="{Binding StrokeColor}" StrokeThickness="{Binding StrokeThickness}"
-                     Fill="Transparent" />
+                     Style="{StaticResource ShapeStrokeStyle}" Fill="Transparent" />
         </DataTemplate>
 
         <DataTemplate DataType="{x:Type models:ArcShape}">
-            <Path Stroke="{Binding StrokeColor}" StrokeThickness="{Binding StrokeThickness}"
-                  StrokeDashArray="4 2" Fill="Transparent">
+            <Path Style="{StaticResource ShapeStrokeStyle}" StrokeDashArray="4 2" Fill="Transparent">
                 <Path.Data>
                     <EllipseGeometry Center="{Binding Center, Converter={StaticResource Point2DToPointConverter}}"
                                       RadiusX="{Binding Radius}" RadiusY="{Binding Radius}" />
@@ -68,9 +80,13 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="170" />
         </Grid.RowDefinitions>
 
         <ToolBar Grid.Row="0">
+            <Button Content="Select" Command="{Binding SelectToolCommand}"
+                    CommandParameter="{x:Static vm:DrawingTool.Select}" />
+            <Separator />
             <Button Content="Line" Command="{Binding SelectToolCommand}"
                     CommandParameter="{x:Static vm:DrawingTool.Line}" />
             <Button Content="Circle" Command="{Binding SelectToolCommand}"
@@ -79,6 +95,8 @@
                     CommandParameter="{x:Static vm:DrawingTool.Rectangle}" />
             <Button Content="Polygon" Command="{Binding SelectToolCommand}"
                     CommandParameter="{x:Static vm:DrawingTool.Polygon}" />
+            <Button Content="Select/Move" Command="{Binding SelectToolCommand}"
+                    CommandParameter="{x:Static vm:DrawingTool.None}" />
             <Separator />
             <Button Content="Undo (Ctrl+Z)" Command="{Binding UndoCommand}" IsEnabled="{Binding CanUndo}" />
             <Button Content="Redo (Ctrl+Y)" Command="{Binding RedoCommand}" IsEnabled="{Binding CanRedo}" />
@@ -101,6 +119,72 @@
             </ItemsControl>
 
             <ContentControl Content="{Binding PreviewShape}" IsHitTestVisible="False" />
+
+            <Canvas IsHitTestVisible="False">
+                <Line X1="{Binding RotationLineX1}" Y1="{Binding RotationLineY1}"
+                      X2="{Binding RotationLineX2}" Y2="{Binding RotationLineY2}"
+                      Stroke="Green" StrokeThickness="1" StrokeDashArray="3 2"
+                      Visibility="{Binding SelectedShape, Converter={StaticResource NotNullToVisibilityConverter}}" />
+            </Canvas>
+
+            <ItemsControl ItemsSource="{Binding TransformHandles}" IsHitTestVisible="False">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <Canvas />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemContainerStyle>
+                    <Style TargetType="ContentPresenter">
+                        <Setter Property="Canvas.Left" Value="{Binding X}" />
+                        <Setter Property="Canvas.Top" Value="{Binding Y}" />
+                    </Style>
+                </ItemsControl.ItemContainerStyle>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type models:TransformHandleInfo}">
+                        <Ellipse Width="10" Height="10" Fill="White" Stroke="Blue"
+                                 StrokeThickness="1.5">
+                            <Ellipse.Style>
+                                <Style TargetType="Ellipse">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Type}" Value="Rotation">
+                                            <Setter Property="Fill" Value="Transparent" />
+                                            <Setter Property="Stroke" Value="Green" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Ellipse.Style>
+                        </Ellipse>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
         </Grid>
+
+        <Border Grid.Row="2" Background="#1E1E1E" BorderBrush="#3A3A3A" BorderThickness="1,1,0,0" Padding="8">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding CliLog}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding}" Foreground="#DCDCDC" FontFamily="Consolas" FontSize="13" Margin="0,1" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <TextBox Grid.Row="1" Text="{Binding CliInput, UpdateSourceTrigger=PropertyChanged}"
+                         FontFamily="Consolas" FontSize="14" Margin="0,8,0,0" Padding="6"
+                         Background="#252526" Foreground="#FFFFFF" BorderBrush="#555555"
+                         CaretBrush="#FFFFFF">
+                    <TextBox.InputBindings>
+                        <KeyBinding Key="Enter" Command="{Binding SubmitCliInputCommand}" />
+                    </TextBox.InputBindings>
+                </TextBox>
+            </Grid>
+        </Border>
     </Grid>
 </Window>
