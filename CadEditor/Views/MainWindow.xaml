@@ -129,6 +129,10 @@
             <Button Content="Undo (Ctrl+Z)" Command="{Binding UndoCommand}" IsEnabled="{Binding CanUndo}" />
             <Button Content="Redo (Ctrl+Y)" Command="{Binding RedoCommand}" IsEnabled="{Binding CanRedo}" />
             <Separator />
+            <ToggleButton Content="Snap Grid" IsChecked="{Binding SnapToGridEnabled}" />
+            <ToggleButton Content="Snap Point" IsChecked="{Binding SnapToPointEnabled}" />
+            <TextBlock Text="{Binding GridSize, StringFormat='Grid: {0:0}'}" VerticalAlignment="Center" Margin="4,0" />
+            <Separator />
             <TextBlock Text="{Binding CurrentTool, StringFormat='Tool: {0}'}" VerticalAlignment="Center" Margin="8,0" />
         </ToolBar>
 

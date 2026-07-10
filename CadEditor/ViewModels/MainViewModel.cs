@@ -43,6 +43,14 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty]
     private bool canRedo;
 
+    [ObservableProperty]
+    private bool snapToGridEnabled;
+
+    [ObservableProperty]
+    private bool snapToPointEnabled;
+
+    [ObservableProperty]
+    private double gridSize = SnapService.DefaultGridSize;
     public ObservableCollection<TransformHandleInfo> TransformHandles { get; } = new();
 
     private readonly UndoRedoManager undoRedoManager = new();
@@ -162,6 +170,7 @@ public partial class MainViewModel : ViewModelBase
 
     public void OnCanvasMouseDown(Point2D point)
     {
+        point = SnapPoint(point);
         if (CurrentTool == DrawingTool.Select)
         {
             SelectShapeAt(point);
@@ -203,6 +212,7 @@ public partial class MainViewModel : ViewModelBase
 
     public void OnCanvasMouseMove(Point2D point)
     {
+        point = SnapPoint(point);
         if (CurrentTool == DrawingTool.Select)
             return;
         if (movingShape != null)
@@ -223,6 +233,7 @@ public partial class MainViewModel : ViewModelBase
 
     public void OnCanvasMouseUp(Point2D point)
     {
+        point = SnapPoint(point);
         if (CurrentTool == DrawingTool.Select)
             return;
         if (movingShape != null)
@@ -357,6 +368,10 @@ public partial class MainViewModel : ViewModelBase
         CanRedo = undoRedoManager.CanRedo;
     }
 
+    private Point2D SnapPoint(Point2D point)
+    {
+        IEnumerable<Point2D>? snapPoints = SnapToPointEnabled ? SnapService.GetSnapPoints(Shapes) : null;
+        return SnapService.Snap(point, GridSize, SnapToGridEnabled, snapPoints, SnapService.PointSnapThreshold, SnapToPointEnabled);
     private HandleType? HitTestHandle(Point2D point)
     {
         const double hitSize = 14;
