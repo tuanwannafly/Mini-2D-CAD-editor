@@ -4,7 +4,8 @@
         xmlns:models="clr-namespace:CadEditor.Models"
         xmlns:converters="clr-namespace:CadEditor.Views.Converters"
         xmlns:vm="clr-namespace:CadEditor.ViewModels"
-        Title="Mini CAD Editor" Height="720" Width="1280">
+        Title="Mini CAD Editor" Height="720" Width="1280"
+        KeyDown="Window_KeyDown">
 
     <Window.DataContext>
         <vm:MainViewModel />
@@ -52,7 +53,6 @@
                      Fill="Transparent" />
         </DataTemplate>
 
-        <!-- MVP: render như full circle nét đứt, chưa cắt theo start/end angle (khớp GetBounds() đã simplify ở US-1.2) -->
         <DataTemplate DataType="{x:Type models:ArcShape}">
             <Path Stroke="{Binding StrokeColor}" StrokeThickness="{Binding StrokeThickness}"
                   StrokeDashArray="4 2" Fill="Transparent">
@@ -65,12 +65,37 @@
     </Window.Resources>
 
     <Grid>
-        <ItemsControl ItemsSource="{Binding Shapes}">
-            <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                    <Canvas Background="White" ClipToBounds="True" />
-                </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-        </ItemsControl>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <ToolBar Grid.Row="0">
+            <Button Content="Line" Command="{Binding SelectToolCommand}"
+                    CommandParameter="{x:Static vm:DrawingTool.Line}" />
+            <Button Content="Circle" Command="{Binding SelectToolCommand}"
+                    CommandParameter="{x:Static vm:DrawingTool.Circle}" />
+            <Button Content="Rectangle" Command="{Binding SelectToolCommand}"
+                    CommandParameter="{x:Static vm:DrawingTool.Rectangle}" />
+            <Button Content="Polygon" Command="{Binding SelectToolCommand}"
+                    CommandParameter="{x:Static vm:DrawingTool.Polygon}" />
+            <Separator />
+            <TextBlock Text="{Binding CurrentTool, StringFormat='Tool: {0}'}" VerticalAlignment="Center" Margin="8,0" />
+        </ToolBar>
+
+        <Grid Grid.Row="1">
+            <Canvas x:Name="DrawingCanvas" Background="White" ClipToBounds="True"
+                    MouseLeftButtonDown="DrawingCanvas_MouseLeftButtonDown"
+                    MouseMove="DrawingCanvas_MouseMove"
+                    MouseLeftButtonUp="DrawingCanvas_MouseLeftButtonUp" />
+
+            <ItemsControl ItemsSource="{Binding Shapes}" IsHitTestVisible="False">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <Canvas Background="Transparent" ClipToBounds="True" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+            </ItemsControl>
+        </Grid>
     </Grid>
 </Window>
