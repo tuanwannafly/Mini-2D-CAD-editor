@@ -80,6 +80,9 @@
             <Button Content="Polygon" Command="{Binding SelectToolCommand}"
                     CommandParameter="{x:Static vm:DrawingTool.Polygon}" />
             <Separator />
+            <Button Content="Undo (Ctrl+Z)" Command="{Binding UndoCommand}" IsEnabled="{Binding CanUndo}" />
+            <Button Content="Redo (Ctrl+Y)" Command="{Binding RedoCommand}" IsEnabled="{Binding CanRedo}" />
+            <Separator />
             <TextBlock Text="{Binding CurrentTool, StringFormat='Tool: {0}'}" VerticalAlignment="Center" Margin="8,0" />
         </ToolBar>
 
@@ -96,6 +99,8 @@
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
             </ItemsControl>
+
+            <ContentControl Content="{Binding PreviewShape}" IsHitTestVisible="False" />
         </Grid>
     </Grid>
 </Window>
