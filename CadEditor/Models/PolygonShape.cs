@@ -28,6 +28,14 @@ public partial class PolygonShape : Shape
             Vertices.Min(v => v.X), Vertices.Min(v => v.Y),
             Vertices.Max(v => v.X), Vertices.Max(v => v.Y));
     }
+
+    public override Point2D GetCenter()
+    {
+        if (Vertices.Count == 0) return new Point2D(0, 0);
+        double sx = 0, sy = 0;
+        foreach (var v in Vertices) { sx += v.X; sy += v.Y; }
+        return new Point2D(sx / Vertices.Count, sy / Vertices.Count);
+    }
     
     public void UpdateLastVertex(Point2D point)
     {

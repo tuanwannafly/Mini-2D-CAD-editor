@@ -20,6 +20,10 @@ public partial class LineShape : Shape
         Math.Min(Start.X, End.X), Math.Min(Start.Y, End.Y),
         Math.Max(Start.X, End.X), Math.Max(Start.Y, End.Y));
 
+    public override Point2D GetCenter() => new(
+        (Start.X + End.X) / 2,
+        (Start.Y + End.Y) / 2);
+
     public override bool HitTest(Point2D point, double tolerance = 3.0)
     {
         double dx = End.X - Start.X;

@@ -14,7 +14,17 @@ public static class ShapeMover
         MoveBy(shape, position.X - current.X, position.Y - current.Y);
     }
 
+    /// <summary>
+    /// Translates the shape by a delta in world (untransformed) coordinate space.
+    /// Because the render transform is a linear operation that does not translate,
+    /// a world-space delta of (dx, dy) produces the same visual translation on screen.
+    /// </summary>
     public static void MoveBy(Shape shape, double dx, double dy)
+    {
+        ApplyLocalDelta(shape, dx, dy);
+    }
+
+    private static void ApplyLocalDelta(Shape shape, double dx, double dy)
     {
         switch (shape)
         {

@@ -20,6 +20,8 @@ public partial class CircleShape : Shape
         Center.X - Radius, Center.Y - Radius,
         Center.X + Radius, Center.Y + Radius);
 
+    public override Point2D GetCenter() => Center;
+
     public override bool HitTest(Point2D point, double tolerance = 3.0)
     {
         return Math.Abs(Distance(point, Center) - Radius) <= tolerance;
