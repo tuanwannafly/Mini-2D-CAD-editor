@@ -9,7 +9,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 
-namespace CadEditor;
+namespace CadEditor.Views;
 
 /// <summary>
 /// Interaction logic for MainWindow.xaml
