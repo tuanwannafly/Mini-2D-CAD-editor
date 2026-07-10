@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CadEditor.Cli;
 using CadEditor.Commands;
 using CadEditor.Models;
 
@@ -10,8 +11,13 @@ public partial class MainViewModel : ViewModelBase
 {
     public ObservableCollection<Shape> Shapes { get; } = new();
 
+    public ObservableCollection<string> CliLog { get; } = new();
+
     [ObservableProperty]
     private DrawingTool currentTool = DrawingTool.Line;
+
+    [ObservableProperty]
+    private string cliInput = string.Empty;
 
     [ObservableProperty]
     private Shape? previewShape;
@@ -40,8 +46,12 @@ public partial class MainViewModel : ViewModelBase
     public ObservableCollection<TransformHandleInfo> TransformHandles { get; } = new();
 
     private readonly UndoRedoManager undoRedoManager = new();
+    private const double HitTestPadding = 4;
 
     private Point2D dragStart;
+    private Point2D moveStart;
+    private Shape? selectedShape;
+    private Shape? movingShape;
     private PolygonShape? polygonInProgress;
 
     // Transform drag state
@@ -101,25 +111,62 @@ public partial class MainViewModel : ViewModelBase
         RebuildTransformHandles();
     }
 
+    [RelayCommand]
+    private void SubmitCliInput()
+    {
+        var input = CliInput.Trim();
+        if (string.IsNullOrWhiteSpace(input))
+            return;
+
+        CliLog.Add($"> {input}");
+        CliLog.Add(ExecuteCliInput(input));
+        CliInput = string.Empty;
+    }
+
+    /// <summary>
+    /// Parse và thực thi 1 dòng lệnh CLI. Trả về message để log ra UI (US-2.5).
+    /// </summary>
+    public string ExecuteCliInput(string input)
+    {
+        var result = CommandParser.Parse(input, Shapes);
+        if (!result.Success)
+            return result.ErrorMessage!;
+
+        switch (result.Command)
+        {
+            case ExecuteEditorCliCommand execute:
+                undoRedoManager.ExecuteCommand(execute.EditorCommand);
+                RefreshUndoRedoState();
+                return "Đã thực thi lệnh.";
+
+            case UndoCliCommand:
+                if (!undoRedoManager.CanUndo) return "Không có gì để Undo.";
+                undoRedoManager.Undo();
+                RefreshUndoRedoState();
+                return "Đã Undo.";
+
+            case RedoCliCommand:
+                if (!undoRedoManager.CanRedo) return "Không có gì để Redo.";
+                undoRedoManager.Redo();
+                RefreshUndoRedoState();
+                return "Đã Redo.";
+
+            default:
+                return "Lệnh không được hỗ trợ.";
+        }
+    }
+
     public void OnCanvasMouseDown(Point2D point)
     {
-        if (CurrentTool == DrawingTool.Select)
+        if (CurrentTool == DrawingTool.None)
         {
-            var handle = HitTestHandle(point);
-            if (handle != null)
+            SelectShapeAt(point);
+            if (selectedShape != null)
             {
-                StartTransform(point, handle.Value);
-                return;
+                movingShape = selectedShape;
+                dragStart = point;
+                moveStart = ShapeMover.GetPosition(movingShape);
             }
-
-            var shape = HitTestShape(point);
-            if (shape != null)
-            {
-                SelectedShape = shape;
-                return;
-            }
-
-            SelectedShape = null;
             return;
         }
 
@@ -149,14 +196,12 @@ public partial class MainViewModel : ViewModelBase
 
     public void OnCanvasMouseMove(Point2D point)
     {
-        if (activeHandle != null)
+        if (movingShape != null)
         {
-            UpdateTransform(point);
+            ShapeMover.MoveBy(movingShape, point.X - dragStart.X, point.Y - dragStart.Y);
+            dragStart = point;
             return;
         }
-
-        if (CurrentTool == DrawingTool.Select)
-            return;
 
         if (CurrentTool == DrawingTool.Polygon)
         {
@@ -169,14 +214,18 @@ public partial class MainViewModel : ViewModelBase
 
     public void OnCanvasMouseUp(Point2D point)
     {
-        if (activeHandle != null)
+        if (movingShape != null)
         {
-            FinishTransform();
+            var shape = movingShape;
+            movingShape = null;
+            var moveEnd = ShapeMover.GetPosition(shape);
+            if (moveEnd != moveStart)
+            {
+                undoRedoManager.ExecuteCommand(new MoveShapeCommand(shape, moveStart, moveEnd));
+                RefreshUndoRedoState();
+            }
             return;
         }
-
-        if (CurrentTool == DrawingTool.Select)
-            return;
 
         if (CurrentTool == DrawingTool.Polygon)
             return;
@@ -242,6 +291,25 @@ public partial class MainViewModel : ViewModelBase
                 break;
         }
     }
+
+    private void SelectShapeAt(Point2D point)
+    {
+        var hit = Shapes.Reverse().FirstOrDefault(shape => ContainsPoint(shape.GetBounds(), point));
+
+        foreach (var shape in Shapes)
+            shape.IsSelected = false;
+
+        selectedShape = hit;
+
+        if (selectedShape != null)
+            selectedShape.IsSelected = true;
+    }
+
+    private static bool ContainsPoint(BoundingBox bounds, Point2D point) =>
+        point.X >= bounds.MinX - HitTestPadding &&
+        point.X <= bounds.MaxX + HitTestPadding &&
+        point.Y >= bounds.MinY - HitTestPadding &&
+        point.Y <= bounds.MaxY + HitTestPadding;
 
     private void RefreshUndoRedoState()
     {
