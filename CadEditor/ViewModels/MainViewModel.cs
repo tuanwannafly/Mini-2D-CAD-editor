@@ -22,6 +22,15 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty]
     private bool canRedo;
 
+    [ObservableProperty]
+    private bool snapToGridEnabled;
+
+    [ObservableProperty]
+    private bool snapToPointEnabled;
+
+    [ObservableProperty]
+    private double gridSize = SnapService.DefaultGridSize;
+
     private readonly UndoRedoManager undoRedoManager = new();
 
     private Point2D dragStart;
@@ -60,11 +69,12 @@ public partial class MainViewModel : ViewModelBase
 
     public void OnCanvasMouseDown(Point2D point)
     {
+        point = SnapPoint(point);
+
         if (CurrentTool == DrawingTool.Polygon)
         {
             if (polygonInProgress == null)
             {
-                // vertex[0] = điểm chốt, vertex[1] = rubber-band bám chuột
                 polygonInProgress = new PolygonShape(new[] { point, point });
                 PreviewShape = polygonInProgress;
             }
@@ -87,6 +97,8 @@ public partial class MainViewModel : ViewModelBase
 
     public void OnCanvasMouseMove(Point2D point)
     {
+        point = SnapPoint(point);
+
         if (CurrentTool == DrawingTool.Polygon)
         {
             polygonInProgress?.UpdateLastVertex(point);
@@ -98,8 +110,10 @@ public partial class MainViewModel : ViewModelBase
 
     public void OnCanvasMouseUp(Point2D point)
     {
+        point = SnapPoint(point);
+
         if (CurrentTool == DrawingTool.Polygon)
-            return; // polygon commit qua click/Enter, không qua mouse-up
+            return;
 
         if (PreviewShape == null) return;
 
@@ -126,7 +140,7 @@ public partial class MainViewModel : ViewModelBase
     {
         if (polygonInProgress == null) return;
 
-        polygonInProgress.RemoveLastVertex(); // bỏ rubber-band chưa chốt
+        polygonInProgress.RemoveLastVertex();
 
         if (polygonInProgress.Vertices.Count >= 3)
         {
@@ -167,6 +181,12 @@ public partial class MainViewModel : ViewModelBase
     {
         CanUndo = undoRedoManager.CanUndo;
         CanRedo = undoRedoManager.CanRedo;
+    }
+
+    private Point2D SnapPoint(Point2D point)
+    {
+        IEnumerable<Point2D>? snapPoints = SnapToPointEnabled ? SnapService.GetSnapPoints(Shapes) : null;
+        return SnapService.Snap(point, GridSize, SnapToGridEnabled, snapPoints, SnapService.PointSnapThreshold, SnapToPointEnabled);
     }
 
     private static double Distance(Point2D a, Point2D b)
