@@ -14,7 +14,7 @@ public partial class MainViewModel : ViewModelBase
     public ObservableCollection<string> CliLog { get; } = new();
 
     [ObservableProperty]
-    private DrawingTool currentTool = DrawingTool.Line;
+    private DrawingTool currentTool = DrawingTool.Select;
 
     [ObservableProperty]
     private string cliInput = string.Empty;
@@ -46,6 +46,7 @@ public partial class MainViewModel : ViewModelBase
     public ObservableCollection<TransformHandleInfo> TransformHandles { get; } = new();
 
     private readonly UndoRedoManager undoRedoManager = new();
+    private readonly QuadTree quadTree;
     private const double HitTestPadding = 4;
 
     private Point2D dragStart;
@@ -64,6 +65,9 @@ public partial class MainViewModel : ViewModelBase
 
     public MainViewModel()
     {
+        // Use the full canvas size as the QuadTree bounds; expand dynamically if needed
+        quadTree = new QuadTree(new BoundingBox(0, 0, 2000, 2000), capacity: 8, maxDepth: 10);
+
         Shapes.Add(new LineShape(new Point2D(20, 20), new Point2D(200, 150)));
         Shapes.Add(new CircleShape(new Point2D(300, 100), 60));
         Shapes.Add(new RectangleShape(new Point2D(400, 50), 120, 80));
@@ -158,6 +162,9 @@ public partial class MainViewModel : ViewModelBase
 
     public void OnCanvasMouseDown(Point2D point)
     {
+        if (CurrentTool == DrawingTool.Select)
+        {
+            SelectShapeAt(point);
         if (CurrentTool == DrawingTool.None)
         {
             SelectShapeAt(point);
@@ -196,6 +203,8 @@ public partial class MainViewModel : ViewModelBase
 
     public void OnCanvasMouseMove(Point2D point)
     {
+        if (CurrentTool == DrawingTool.Select)
+            return;
         if (movingShape != null)
         {
             ShapeMover.MoveBy(movingShape, point.X - dragStart.X, point.Y - dragStart.Y);
@@ -214,6 +223,8 @@ public partial class MainViewModel : ViewModelBase
 
     public void OnCanvasMouseUp(Point2D point)
     {
+        if (CurrentTool == DrawingTool.Select)
+            return;
         if (movingShape != null)
         {
             var shape = movingShape;
@@ -271,6 +282,35 @@ public partial class MainViewModel : ViewModelBase
     {
         polygonInProgress = null;
         PreviewShape = null;
+    }
+
+    private void SelectShapeAt(Point2D point)
+    {
+        quadTree.Rebuild(Shapes);
+        var candidates = quadTree.Query(point);
+
+        Shape? best = null;
+        int bestIndex = -1;
+        var seen = new HashSet<Guid>();
+
+        foreach (var candidate in candidates)
+        {
+            if (!seen.Add(candidate.Id))
+                continue;
+
+            if (!candidate.HitTest(point))
+                continue;
+
+            int index = Shapes.IndexOf(candidate);
+            if (index > bestIndex)
+            {
+                bestIndex = index;
+                best = candidate;
+            }
+        }
+
+        foreach (var shape in Shapes)
+            shape.IsSelected = shape == best;
     }
 
     private void UpdatePreviewShape(Point2D point)

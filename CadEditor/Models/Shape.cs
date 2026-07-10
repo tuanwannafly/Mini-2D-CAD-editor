@@ -30,6 +30,15 @@ public abstract partial class Shape : ObservableObject
 
     public abstract BoundingBox GetBounds();
 
+    public abstract bool HitTest(Point2D point, double tolerance = 3.0);
+
+    protected static double Distance(Point2D a, Point2D b)
+    {
+        double dx = a.X - b.X;
+        double dy = a.Y - b.Y;
+        return Math.Sqrt(dx * dx + dy * dy);
+    }
+}
     public Transform RenderTransform
     {
         get
