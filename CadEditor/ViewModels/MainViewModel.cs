@@ -25,7 +25,16 @@ public partial class MainViewModel : ViewModelBase
     private Shape? previewShape;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SelectedShapeStatus))]
     private Shape? selectedShape;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(MousePositionStatus))]
+    private double mouseX;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(MousePositionStatus))]
+    private double mouseY;
 
     [ObservableProperty]
     private double rotationLineX1;
@@ -65,6 +74,10 @@ public partial class MainViewModel : ViewModelBase
 
     public Array PersistenceFormats { get; } = Enum.GetValues(typeof(PersistenceFormat));
 
+    public string MousePositionStatus => $"X: {MouseX:0.0}, Y: {MouseY:0.0}";
+
+    public string SelectedShapeStatus => SelectedShape == null ? "Selected: None" : $"Selected: {GetShapeDisplayName(SelectedShape)}";
+
     public ObservableCollection<TransformHandleInfo> TransformHandles { get; } = new();
 
     private readonly UndoRedoManager undoRedoManager = new();
@@ -73,7 +86,6 @@ public partial class MainViewModel : ViewModelBase
 
     private Point2D dragStart;
     private Point2D moveStart;
-    private Shape? selectedShape;
     private Shape? movingShape;
     private PolygonShape? polygonInProgress;
 
@@ -133,6 +145,17 @@ public partial class MainViewModel : ViewModelBase
     private void Redo()
     {
         undoRedoManager.Redo();
+        RefreshUndoRedoState();
+        RebuildTransformHandles();
+    }
+
+    [RelayCommand]
+    private void DeleteSelectedShape()
+    {
+        if (SelectedShape == null) return;
+
+        undoRedoManager.ExecuteCommand(new DeleteShapeCommand(Shapes, SelectedShape));
+        SelectedShape = null;
         RefreshUndoRedoState();
         RebuildTransformHandles();
     }
@@ -217,16 +240,21 @@ public partial class MainViewModel : ViewModelBase
 
     public void OnCanvasMouseDown(Point2D point)
     {
+        UpdateMousePosition(point);
         point = SnapPoint(point);
-        if (CurrentTool == DrawingTool.Select)
+        if (CurrentTool is DrawingTool.Select or DrawingTool.None)
         {
-            SelectShapeAt(point);
-        if (CurrentTool == DrawingTool.None)
-        {
-            SelectShapeAt(point);
-            if (selectedShape != null)
+            var handle = HitTestHandle(point);
+            if (handle != null)
             {
-                movingShape = selectedShape;
+                StartTransform(point, handle.Value);
+                return;
+            }
+
+            SelectedShape = HitTestShape(point);
+            if (SelectedShape != null)
+            {
+                movingShape = SelectedShape;
                 dragStart = point;
                 moveStart = ShapeMover.GetPosition(movingShape);
             }
@@ -259,15 +287,23 @@ public partial class MainViewModel : ViewModelBase
 
     public void OnCanvasMouseMove(Point2D point)
     {
+        UpdateMousePosition(point);
         point = SnapPoint(point);
-        if (CurrentTool == DrawingTool.Select)
+        if (activeHandle != null)
+        {
+            UpdateTransform(point);
             return;
+        }
+
         if (movingShape != null)
         {
             ShapeMover.MoveBy(movingShape, point.X - dragStart.X, point.Y - dragStart.Y);
             dragStart = point;
             return;
         }
+
+        if (CurrentTool == DrawingTool.Select)
+            return;
 
         if (CurrentTool == DrawingTool.Polygon)
         {
@@ -280,9 +316,14 @@ public partial class MainViewModel : ViewModelBase
 
     public void OnCanvasMouseUp(Point2D point)
     {
+        UpdateMousePosition(point);
         point = SnapPoint(point);
-        if (CurrentTool == DrawingTool.Select)
+        if (activeHandle != null)
+        {
+            FinishTransform();
             return;
+        }
+
         if (movingShape != null)
         {
             var shape = movingShape;
@@ -295,6 +336,9 @@ public partial class MainViewModel : ViewModelBase
             }
             return;
         }
+
+        if (CurrentTool == DrawingTool.Select)
+            return;
 
         if (CurrentTool == DrawingTool.Polygon)
             return;
@@ -342,33 +386,10 @@ public partial class MainViewModel : ViewModelBase
         PreviewShape = null;
     }
 
-    private void SelectShapeAt(Point2D point)
+    public void UpdateMousePosition(Point2D point)
     {
-        quadTree.Rebuild(Shapes);
-        var candidates = quadTree.Query(point);
-
-        Shape? best = null;
-        int bestIndex = -1;
-        var seen = new HashSet<Guid>();
-
-        foreach (var candidate in candidates)
-        {
-            if (!seen.Add(candidate.Id))
-                continue;
-
-            if (!candidate.HitTest(point))
-                continue;
-
-            int index = Shapes.IndexOf(candidate);
-            if (index > bestIndex)
-            {
-                bestIndex = index;
-                best = candidate;
-            }
-        }
-
-        foreach (var shape in Shapes)
-            shape.IsSelected = shape == best;
+        MouseX = point.X;
+        MouseY = point.Y;
     }
 
     private void UpdatePreviewShape(Point2D point)
@@ -390,25 +411,6 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
-    private void SelectShapeAt(Point2D point)
-    {
-        var hit = Shapes.Reverse().FirstOrDefault(shape => ContainsPoint(shape.GetBounds(), point));
-
-        foreach (var shape in Shapes)
-            shape.IsSelected = false;
-
-        selectedShape = hit;
-
-        if (selectedShape != null)
-            selectedShape.IsSelected = true;
-    }
-
-    private static bool ContainsPoint(BoundingBox bounds, Point2D point) =>
-        point.X >= bounds.MinX - HitTestPadding &&
-        point.X <= bounds.MaxX + HitTestPadding &&
-        point.Y >= bounds.MinY - HitTestPadding &&
-        point.Y <= bounds.MaxY + HitTestPadding;
-
     private void RefreshUndoRedoState()
     {
         CanUndo = undoRedoManager.CanUndo;
@@ -419,6 +421,8 @@ public partial class MainViewModel : ViewModelBase
     {
         IEnumerable<Point2D>? snapPoints = SnapToPointEnabled ? SnapService.GetSnapPoints(Shapes) : null;
         return SnapService.Snap(point, GridSize, SnapToGridEnabled, snapPoints, SnapService.PointSnapThreshold, SnapToPointEnabled);
+    }
+
     private HandleType? HitTestHandle(Point2D point)
     {
         const double hitSize = 14;
@@ -433,8 +437,19 @@ public partial class MainViewModel : ViewModelBase
 
     private Shape? HitTestShape(Point2D point)
     {
-        foreach (var shape in Shapes.Reverse())
+        quadTree.Rebuild(Shapes);
+        var candidates = quadTree.Query(new BoundingBox(
+            point.X - HitTestPadding,
+            point.Y - HitTestPadding,
+            point.X + HitTestPadding,
+            point.Y + HitTestPadding));
+        var seen = new HashSet<Guid>();
+
+        foreach (var shape in candidates.AsEnumerable().Reverse())
         {
+            if (!seen.Add(shape.Id))
+                continue;
+
             var bounds = shape.GetBounds();
             var cx = bounds.MinX + bounds.Width / 2;
             var cy = bounds.MinY + bounds.Height / 2;
@@ -453,7 +468,8 @@ public partial class MainViewModel : ViewModelBase
 
             var local = new Point2D(cx + sx, cy + sy);
 
-            if (bounds.MinX <= local.X && local.X <= bounds.MaxX &&
+            if (shape.HitTest(local, HitTestPadding) ||
+                bounds.MinX <= local.X && local.X <= bounds.MaxX &&
                 bounds.MinY <= local.Y && local.Y <= bounds.MaxY)
                 return shape;
         }
@@ -635,4 +651,14 @@ public partial class MainViewModel : ViewModelBase
         double h = Math.Abs(current.Y - start.Y);
         return (new Point2D(x, y), w, h);
     }
+
+    private static string GetShapeDisplayName(Shape shape) => shape switch
+    {
+        LineShape => "Line",
+        CircleShape => "Circle",
+        RectangleShape => "Rectangle",
+        PolygonShape => "Polygon",
+        ArcShape => "Arc",
+        _ => shape.GetType().Name
+    };
 }
