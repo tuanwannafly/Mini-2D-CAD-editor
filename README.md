@@ -67,6 +67,9 @@ The parser reuses the same Command Pattern infrastructure as mouse actions — a
 - **Convex Hull**: Graham scan — computes auto-bounding-box for multi-shape selection
 - All implemented in pure static `GeometryUtils` (no UI dependency) with full **xUnit** coverage
 
+## demo
+
+
 ## Architecture
 
 ```
