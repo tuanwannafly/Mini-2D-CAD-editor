@@ -7,6 +7,13 @@
         Title="Mini CAD Editor" Height="720" Width="1280"
         KeyDown="Window_KeyDown">
 
+    <Window.InputBindings>
+        <KeyBinding Key="Z" Modifiers="Control" Command="{Binding UndoCommand}" />
+        <KeyBinding Key="Y" Modifiers="Control" Command="{Binding RedoCommand}" />
+        <KeyBinding Key="S" Modifiers="Control" Command="{Binding SaveDrawingCommand}" />
+        <KeyBinding Key="Delete" Command="{Binding DeleteSelectedShapeCommand}" />
+    </Window.InputBindings>
+
     <Window.DataContext>
         <vm:MainViewModel />
     </Window.DataContext>
@@ -28,14 +35,20 @@
             </Style.Triggers>
         </Style>
 
-        <Style x:Key="ShapeStrokeStyle" TargetType="Shape">
-            <Setter Property="Stroke" Value="{Binding StrokeColor}" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                    <Setter Property="Stroke" Value="DeepSkyBlue" />
-                    <Setter Property="StrokeThickness" Value="3" />
-                </DataTrigger>
-            </Style.Triggers>
+        <Style x:Key="ToolButtonStyle" TargetType="Button">
+            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="Margin" Value="1,0" />
+            <Setter Property="MinWidth" Value="72" />
+        </Style>
+
+        <Style x:Key="ToolIconStyle" TargetType="Path">
+            <Setter Property="Stroke" Value="#333333" />
+            <Setter Property="StrokeThickness" Value="1.8" />
+            <Setter Property="Fill" Value="Transparent" />
+            <Setter Property="Width" Value="18" />
+            <Setter Property="Height" Value="18" />
+            <Setter Property="Stretch" Value="Uniform" />
+            <Setter Property="Margin" Value="0,0,5,0" />
         </Style>
 
         <DataTemplate DataType="{x:Type models:LineShape}">
@@ -46,14 +59,7 @@
         </DataTemplate>
 
         <DataTemplate DataType="{x:Type models:CircleShape}">
-            <Path StrokeThickness="{Binding StrokeThickness}" Fill="Transparent"
-                  Style="{StaticResource ShapeStrokeStyle}">
-                  Stroke="{Binding StrokeColor}" StrokeThickness="{Binding StrokeThickness}"
-                  RenderTransform="{Binding RenderTransform}" RenderTransformOrigin="0.5,0.5" />
-        </DataTemplate>
-
-        <DataTemplate DataType="{x:Type models:CircleShape}">
-            <Path Stroke="{Binding StrokeColor}" StrokeThickness="{Binding StrokeThickness}" Fill="Transparent"
+            <Path Style="{StaticResource ShapeStrokeStyle}" Fill="Transparent"
                   RenderTransform="{Binding RenderTransform}" RenderTransformOrigin="0.5,0.5">
                 <Path.Data>
                     <EllipseGeometry Center="{Binding Center, Converter={StaticResource Point2DToPointConverter}}"
@@ -63,8 +69,6 @@
         </DataTemplate>
 
         <DataTemplate DataType="{x:Type models:RectangleShape}">
-            <Path StrokeThickness="{Binding StrokeThickness}" Fill="Transparent"
-                  Style="{StaticResource ShapeStrokeStyle}">
             <Path Style="{StaticResource ShapeStrokeStyle}" Fill="Transparent">
                 <Path.Data>
                     <RectangleGeometry>
@@ -88,13 +92,6 @@
         </DataTemplate>
 
         <DataTemplate DataType="{x:Type models:ArcShape}">
-            <Path StrokeThickness="{Binding StrokeThickness}"
-                  StrokeDashArray="4 2" Fill="Transparent"
-                  Style="{StaticResource ShapeStrokeStyle}">
-                     Style="{StaticResource ShapeStrokeStyle}" Fill="Transparent" />
-        </DataTemplate>
-
-        <DataTemplate DataType="{x:Type models:ArcShape}">
             <Path Style="{StaticResource ShapeStrokeStyle}" StrokeDashArray="4 2" Fill="Transparent">
                 <Path.Data>
                     <EllipseGeometry Center="{Binding Center, Converter={StaticResource Point2DToPointConverter}}"
@@ -108,23 +105,54 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="170" />
         </Grid.RowDefinitions>
 
         <ToolBar Grid.Row="0">
-            <Button Content="Select" Command="{Binding SelectToolCommand}"
-                    CommandParameter="{x:Static vm:DrawingTool.Select}" />
+            <Button Style="{StaticResource ToolButtonStyle}" Command="{Binding SelectToolCommand}"
+                    CommandParameter="{x:Static vm:DrawingTool.Select}" ToolTip="Select (Esc cancels drawing)">
+                <StackPanel Orientation="Horizontal">
+                    <Path Style="{StaticResource ToolIconStyle}" Fill="#333333" Data="M2,1 L16,9 L9,10 L6,17 Z" />
+                    <TextBlock Text="Select" />
+                </StackPanel>
+            </Button>
             <Separator />
-            <Button Content="Line" Command="{Binding SelectToolCommand}"
-                    CommandParameter="{x:Static vm:DrawingTool.Line}" />
-            <Button Content="Circle" Command="{Binding SelectToolCommand}"
-                    CommandParameter="{x:Static vm:DrawingTool.Circle}" />
-            <Button Content="Rectangle" Command="{Binding SelectToolCommand}"
-                    CommandParameter="{x:Static vm:DrawingTool.Rectangle}" />
-            <Button Content="Polygon" Command="{Binding SelectToolCommand}"
-                    CommandParameter="{x:Static vm:DrawingTool.Polygon}" />
-            <Button Content="Select/Move" Command="{Binding SelectToolCommand}"
-                    CommandParameter="{x:Static vm:DrawingTool.None}" />
+            <Button Style="{StaticResource ToolButtonStyle}" Command="{Binding SelectToolCommand}"
+                    CommandParameter="{x:Static vm:DrawingTool.Line}" ToolTip="Line tool">
+                <StackPanel Orientation="Horizontal">
+                    <Path Style="{StaticResource ToolIconStyle}" Data="M2,16 L16,2" />
+                    <TextBlock Text="Line" />
+                </StackPanel>
+            </Button>
+            <Button Style="{StaticResource ToolButtonStyle}" Command="{Binding SelectToolCommand}"
+                    CommandParameter="{x:Static vm:DrawingTool.Circle}" ToolTip="Circle tool">
+                <StackPanel Orientation="Horizontal">
+                    <Path Style="{StaticResource ToolIconStyle}" Data="M9,1 A8,8 0 1 1 8.9,1" />
+                    <TextBlock Text="Circle" />
+                </StackPanel>
+            </Button>
+            <Button Style="{StaticResource ToolButtonStyle}" Command="{Binding SelectToolCommand}"
+                    CommandParameter="{x:Static vm:DrawingTool.Rectangle}" ToolTip="Rectangle tool">
+                <StackPanel Orientation="Horizontal">
+                    <Path Style="{StaticResource ToolIconStyle}" Data="M2,3 H16 V15 H2 Z" />
+                    <TextBlock Text="Rect" />
+                </StackPanel>
+            </Button>
+            <Button Style="{StaticResource ToolButtonStyle}" Command="{Binding SelectToolCommand}"
+                    CommandParameter="{x:Static vm:DrawingTool.Polygon}" ToolTip="Polygon tool">
+                <StackPanel Orientation="Horizontal">
+                    <Path Style="{StaticResource ToolIconStyle}" Data="M9,1 L17,7 L14,17 H4 L1,7 Z" />
+                    <TextBlock Text="Polygon" />
+                </StackPanel>
+            </Button>
+            <Button Style="{StaticResource ToolButtonStyle}" Command="{Binding SelectToolCommand}"
+                    CommandParameter="{x:Static vm:DrawingTool.None}" ToolTip="Move selected shape">
+                <StackPanel Orientation="Horizontal">
+                    <Path Style="{StaticResource ToolIconStyle}" Data="M9,1 V17 M1,9 H17 M9,1 L6,4 M9,1 L12,4 M9,17 L6,14 M9,17 L12,14 M1,9 L4,6 M1,9 L4,12 M17,9 L14,6 M17,9 L14,12" />
+                    <TextBlock Text="Move" />
+                </StackPanel>
+            </Button>
             <Separator />
             <Button Content="Undo (Ctrl+Z)" Command="{Binding UndoCommand}" IsEnabled="{Binding CanUndo}" />
             <Button Content="Redo (Ctrl+Y)" Command="{Binding RedoCommand}" IsEnabled="{Binding CanRedo}" />
@@ -201,7 +229,21 @@
             </ItemsControl>
         </Grid>
 
-        <Border Grid.Row="2" Background="#1E1E1E" BorderBrush="#3A3A3A" BorderThickness="1,1,0,0" Padding="8">
+        <StatusBar Grid.Row="2" Background="#F3F3F3" BorderBrush="#D0D0D0" BorderThickness="0,1,0,1">
+            <StatusBarItem>
+                <TextBlock Text="{Binding MousePositionStatus}" />
+            </StatusBarItem>
+            <Separator />
+            <StatusBarItem>
+                <TextBlock Text="{Binding SelectedShapeStatus}" />
+            </StatusBarItem>
+            <Separator />
+            <StatusBarItem>
+                <TextBlock Text="Shortcuts: Ctrl+S Save, Ctrl+Z Undo, Ctrl+Y Redo, Delete Remove" />
+            </StatusBarItem>
+        </StatusBar>
+
+        <Border Grid.Row="3" Background="#1E1E1E" BorderBrush="#3A3A3A" BorderThickness="1,1,0,0" Padding="8">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*" />

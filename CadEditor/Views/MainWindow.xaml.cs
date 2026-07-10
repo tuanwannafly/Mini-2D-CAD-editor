@@ -49,21 +49,35 @@ public partial class MainWindow : Window
         if (ctrl && e.Key == Key.Z)
         {
             ViewModel.UndoCommand.Execute(null);
+            e.Handled = true;
             return;
         }
         if (ctrl && e.Key == Key.Y)
         {
             ViewModel.RedoCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+        if (ctrl && e.Key == Key.S)
+        {
+            ViewModel.SaveDrawingCommand.Execute(null);
+            e.Handled = true;
             return;
         }
 
         switch (e.Key)
         {
+            case Key.Delete:
+                ViewModel.DeleteSelectedShapeCommand.Execute(null);
+                e.Handled = true;
+                break;
             case Key.Enter:
                 ViewModel.FinishPolygon();
+                e.Handled = true;
                 break;
             case Key.Escape:
                 ViewModel.CancelPolygon();
+                e.Handled = true;
                 break;
         }
     }
