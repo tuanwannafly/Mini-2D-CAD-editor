@@ -44,6 +44,19 @@ public partial class MainWindow : Window
 
     private void Window_KeyDown(object sender, KeyEventArgs e)
     {
+        bool ctrl = Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
+
+        if (ctrl && e.Key == Key.Z)
+        {
+            ViewModel.UndoCommand.Execute(null);
+            return;
+        }
+        if (ctrl && e.Key == Key.Y)
+        {
+            ViewModel.RedoCommand.Execute(null);
+            return;
+        }
+
         switch (e.Key)
         {
             case Key.Enter:

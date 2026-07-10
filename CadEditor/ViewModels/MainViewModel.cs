@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CadEditor.Commands;
 using CadEditor.Models;
 
 namespace CadEditor.ViewModels;
@@ -12,7 +13,17 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty]
     private DrawingTool currentTool = DrawingTool.Line;
 
-    private Shape? shapeInProgress;
+    [ObservableProperty]
+    private Shape? previewShape;
+
+    [ObservableProperty]
+    private bool canUndo;
+
+    [ObservableProperty]
+    private bool canRedo;
+
+    private readonly UndoRedoManager undoRedoManager = new();
+
     private Point2D dragStart;
     private PolygonShape? polygonInProgress;
 
@@ -29,8 +40,22 @@ public partial class MainViewModel : ViewModelBase
     private void SelectTool(DrawingTool tool)
     {
         CancelPolygon();
-        shapeInProgress = null;
+        PreviewShape = null;
         CurrentTool = tool;
+    }
+
+    [RelayCommand]
+    private void Undo()
+    {
+        undoRedoManager.Undo();
+        RefreshUndoRedoState();
+    }
+
+    [RelayCommand]
+    private void Redo()
+    {
+        undoRedoManager.Redo();
+        RefreshUndoRedoState();
     }
 
     public void OnCanvasMouseDown(Point2D point)
@@ -41,27 +66,23 @@ public partial class MainViewModel : ViewModelBase
             {
                 // vertex[0] = điểm chốt, vertex[1] = rubber-band bám chuột
                 polygonInProgress = new PolygonShape(new[] { point, point });
-                Shapes.Add(polygonInProgress);
+                PreviewShape = polygonInProgress;
             }
             else
             {
-                // chốt vertex rubber-band hiện tại, mở thêm 1 rubber-band mới
                 polygonInProgress.AddVertex(point);
             }
             return;
         }
 
         dragStart = point;
-        shapeInProgress = CurrentTool switch
+        PreviewShape = CurrentTool switch
         {
             DrawingTool.Line => new LineShape(point, point),
             DrawingTool.Circle => new CircleShape(point, 0),
             DrawingTool.Rectangle => new RectangleShape(point, 0, 0),
             _ => null
         };
-
-        if (shapeInProgress != null)
-            Shapes.Add(shapeInProgress);
     }
 
     public void OnCanvasMouseMove(Point2D point)
@@ -72,20 +93,19 @@ public partial class MainViewModel : ViewModelBase
             return;
         }
 
-        UpdateShapeInProgress(point);
+        UpdatePreviewShape(point);
     }
 
     public void OnCanvasMouseUp(Point2D point)
     {
         if (CurrentTool == DrawingTool.Polygon)
-            return; // polygon commit qua click, không qua mouse-up
+            return; // polygon commit qua click/Enter, không qua mouse-up
 
-        if (shapeInProgress == null) return;
+        if (PreviewShape == null) return;
 
-        UpdateShapeInProgress(point);
+        UpdatePreviewShape(point);
 
-        // click không kéo -> shape rỗng -> bỏ, không add vào collection
-        bool isDegenerate = shapeInProgress switch
+        bool isDegenerate = PreviewShape switch
         {
             LineShape line => Distance(line.Start, line.End) < 1,
             CircleShape circle => circle.Radius < 1,
@@ -93,10 +113,13 @@ public partial class MainViewModel : ViewModelBase
             _ => false
         };
 
-        if (isDegenerate)
-            Shapes.Remove(shapeInProgress);
+        if (!isDegenerate)
+        {
+            undoRedoManager.ExecuteCommand(new AddShapeCommand(Shapes, PreviewShape));
+            RefreshUndoRedoState();
+        }
 
-        shapeInProgress = null;
+        PreviewShape = null;
     }
 
     public void FinishPolygon()
@@ -105,22 +128,25 @@ public partial class MainViewModel : ViewModelBase
 
         polygonInProgress.RemoveLastVertex(); // bỏ rubber-band chưa chốt
 
-        if (polygonInProgress.Vertices.Count < 3)
-            Shapes.Remove(polygonInProgress);
+        if (polygonInProgress.Vertices.Count >= 3)
+        {
+            undoRedoManager.ExecuteCommand(new AddShapeCommand(Shapes, polygonInProgress));
+            RefreshUndoRedoState();
+        }
 
         polygonInProgress = null;
+        PreviewShape = null;
     }
 
     public void CancelPolygon()
     {
-        if (polygonInProgress == null) return;
-        Shapes.Remove(polygonInProgress);
         polygonInProgress = null;
+        PreviewShape = null;
     }
 
-    private void UpdateShapeInProgress(Point2D point)
+    private void UpdatePreviewShape(Point2D point)
     {
-        switch (shapeInProgress)
+        switch (PreviewShape)
         {
             case LineShape line:
                 line.End = point;
@@ -135,6 +161,12 @@ public partial class MainViewModel : ViewModelBase
                 rect.Height = height;
                 break;
         }
+    }
+
+    private void RefreshUndoRedoState()
+    {
+        CanUndo = undoRedoManager.CanUndo;
+        CanRedo = undoRedoManager.CanRedo;
     }
 
     private static double Distance(Point2D a, Point2D b)
