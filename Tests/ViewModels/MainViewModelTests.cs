@@ -23,6 +23,7 @@ public class MainViewModelTests
         var initialCount = vm.Shapes.Count;
         var shape = new CircleShape(new Point2D(0, 0), 5);
         vm.Shapes.Add(shape);
+        var before = vm.Shapes.Count;
 
         vm.Shapes.Remove(shape);
 

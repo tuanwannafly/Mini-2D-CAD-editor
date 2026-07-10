@@ -23,10 +23,27 @@ public partial class MainViewModel : ViewModelBase
     private Shape? previewShape;
 
     [ObservableProperty]
+    private Shape? selectedShape;
+
+    [ObservableProperty]
+    private double rotationLineX1;
+
+    [ObservableProperty]
+    private double rotationLineY1;
+
+    [ObservableProperty]
+    private double rotationLineX2;
+
+    [ObservableProperty]
+    private double rotationLineY2;
+
+    [ObservableProperty]
     private bool canUndo;
 
     [ObservableProperty]
     private bool canRedo;
+
+    public ObservableCollection<TransformHandleInfo> TransformHandles { get; } = new();
 
     private readonly UndoRedoManager undoRedoManager = new();
     private const double HitTestPadding = 4;
@@ -37,6 +54,14 @@ public partial class MainViewModel : ViewModelBase
     private Shape? movingShape;
     private PolygonShape? polygonInProgress;
 
+    // Transform drag state
+    private HandleType? activeHandle;
+    private Point2D transformStartPoint;
+    private Point2D shapeCenter;
+    private double initialRotationDeg;
+    private double initialScaleX;
+    private double initialScaleY;
+
     public MainViewModel()
     {
         Shapes.Add(new LineShape(new Point2D(20, 20), new Point2D(200, 150)));
@@ -44,6 +69,22 @@ public partial class MainViewModel : ViewModelBase
         Shapes.Add(new RectangleShape(new Point2D(400, 50), 120, 80));
         Shapes.Add(new PolygonShape(new[] { new Point2D(500, 200), new Point2D(600, 200), new Point2D(550, 280) }));
         Shapes.Add(new ArcShape(new Point2D(700, 150), 50, 0, 180));
+    }
+
+    partial void OnCurrentToolChanged(DrawingTool value)
+    {
+        if (value != DrawingTool.Select)
+        {
+            SelectedShape = null;
+            TransformHandles.Clear();
+        }
+    }
+
+    partial void OnSelectedShapeChanged(Shape? value)
+    {
+        foreach (var s in Shapes)
+            s.IsSelected = s == value;
+        RebuildTransformHandles();
     }
 
     [RelayCommand]
@@ -59,6 +100,7 @@ public partial class MainViewModel : ViewModelBase
     {
         undoRedoManager.Undo();
         RefreshUndoRedoState();
+        RebuildTransformHandles();
     }
 
     [RelayCommand]
@@ -66,6 +108,7 @@ public partial class MainViewModel : ViewModelBase
     {
         undoRedoManager.Redo();
         RefreshUndoRedoState();
+        RebuildTransformHandles();
     }
 
     [RelayCommand]
@@ -272,6 +315,207 @@ public partial class MainViewModel : ViewModelBase
     {
         CanUndo = undoRedoManager.CanUndo;
         CanRedo = undoRedoManager.CanRedo;
+    }
+
+    private HandleType? HitTestHandle(Point2D point)
+    {
+        const double hitSize = 14;
+        foreach (var h in TransformHandles)
+        {
+            if (Math.Abs(point.X - (h.X + 5)) < hitSize / 2 &&
+                Math.Abs(point.Y - (h.Y + 5)) < hitSize / 2)
+                return h.Type;
+        }
+        return null;
+    }
+
+    private Shape? HitTestShape(Point2D point)
+    {
+        foreach (var shape in Shapes.Reverse())
+        {
+            var bounds = shape.GetBounds();
+            var cx = bounds.MinX + bounds.Width / 2;
+            var cy = bounds.MinY + bounds.Height / 2;
+
+            double dx = point.X - cx;
+            double dy = point.Y - cy;
+
+            double rad = -shape.RotationDeg * Math.PI / 180;
+            double cos = Math.Cos(rad);
+            double sin = Math.Sin(rad);
+            double rx = dx * cos - dy * sin;
+            double ry = dx * sin + dy * cos;
+
+            double sx = shape.ScaleX == 0 ? 0 : rx / shape.ScaleX;
+            double sy = shape.ScaleY == 0 ? 0 : ry / shape.ScaleY;
+
+            var local = new Point2D(cx + sx, cy + sy);
+
+            if (bounds.MinX <= local.X && local.X <= bounds.MaxX &&
+                bounds.MinY <= local.Y && local.Y <= bounds.MaxY)
+                return shape;
+        }
+        return null;
+    }
+
+    private void StartTransform(Point2D point, HandleType handleType)
+    {
+        if (SelectedShape == null) return;
+
+        activeHandle = handleType;
+        transformStartPoint = point;
+        initialRotationDeg = SelectedShape.RotationDeg;
+        initialScaleX = SelectedShape.ScaleX;
+        initialScaleY = SelectedShape.ScaleY;
+
+        var bounds = SelectedShape.GetBounds();
+        shapeCenter = new Point2D(bounds.MinX + bounds.Width / 2, bounds.MinY + bounds.Height / 2);
+    }
+
+    private void UpdateTransform(Point2D point)
+    {
+        if (SelectedShape == null || activeHandle == null) return;
+
+        if (activeHandle == HandleType.Rotation)
+        {
+            double startAngle = Math.Atan2(
+                transformStartPoint.Y - shapeCenter.Y,
+                transformStartPoint.X - shapeCenter.X) * 180 / Math.PI;
+            double currentAngle = Math.Atan2(
+                point.Y - shapeCenter.Y,
+                point.X - shapeCenter.X) * 180 / Math.PI;
+            SelectedShape.RotationDeg = initialRotationDeg + (currentAngle - startAngle);
+        }
+        else
+        {
+            var startLocal = RotatePoint(transformStartPoint, shapeCenter, -initialRotationDeg);
+            var currentLocal = RotatePoint(point, shapeCenter, -initialRotationDeg);
+            ApplyScaleFromHandle(startLocal, currentLocal);
+        }
+
+        RebuildTransformHandles();
+    }
+
+    private void FinishTransform()
+    {
+        if (SelectedShape == null || activeHandle == null) return;
+
+        var cmd = new TransformCommand(
+            SelectedShape,
+            initialRotationDeg, initialScaleX, initialScaleY,
+            SelectedShape.RotationDeg, SelectedShape.ScaleX, SelectedShape.ScaleY);
+
+        undoRedoManager.ExecuteCommand(cmd);
+        RefreshUndoRedoState();
+
+        activeHandle = null;
+    }
+
+    private void RebuildTransformHandles()
+    {
+        TransformHandles.Clear();
+        RotationLineX1 = 0;
+        RotationLineY1 = 0;
+        RotationLineX2 = 0;
+        RotationLineY2 = 0;
+        if (SelectedShape == null) return;
+
+        var bounds = SelectedShape.GetBounds();
+        var center = new Point2D(
+            bounds.MinX + bounds.Width / 2,
+            bounds.MinY + bounds.Height / 2);
+
+        var raw = new[]
+        {
+            new Point2D(bounds.MinX, bounds.MinY),       // TL
+            new Point2D(bounds.MaxX, bounds.MinY),       // TR
+            new Point2D(bounds.MaxX, bounds.MaxY),       // BR
+            new Point2D(bounds.MinX, bounds.MaxY)        // BL
+        };
+
+        var scaled = raw.Select(p => ScalePoint(p, center, SelectedShape.ScaleX, SelectedShape.ScaleY)).ToArray();
+        var transformed = scaled.Select(p => RotatePoint(p, center, SelectedShape.RotationDeg)).ToArray();
+
+        var types = new[] { HandleType.TopLeft, HandleType.TopRight, HandleType.BottomRight, HandleType.BottomLeft };
+        for (int i = 0; i < 4; i++)
+            TransformHandles.Add(new TransformHandleInfo { X = transformed[i].X - 5, Y = transformed[i].Y - 5, Type = types[i] });
+
+        var edgePairs = new[] { (0, 1), (1, 2), (2, 3), (3, 0) };
+        var edgeTypes = new[] { HandleType.TopCenter, HandleType.MiddleRight, HandleType.BottomCenter, HandleType.MiddleLeft };
+        for (int i = 0; i < 4; i++)
+        {
+            var (a, b) = edgePairs[i];
+            TransformHandles.Add(new TransformHandleInfo
+            {
+                X = (transformed[a].X + transformed[b].X) / 2 - 5,
+                Y = (transformed[a].Y + transformed[b].Y) / 2 - 5,
+                Type = edgeTypes[i]
+            });
+        }
+
+        // Rotation handle: perpendicular outward from top edge
+        var topEdge = (transformed[0], transformed[1]);
+        double edx = topEdge.Item2.X - topEdge.Item1.X;
+        double edy = topEdge.Item2.Y - topEdge.Item1.Y;
+        double elen = Math.Sqrt(edx * edx + edy * edy);
+        if (elen > 0)
+        {
+            double rhx = (topEdge.Item1.X + topEdge.Item2.X) / 2 + (-edy / elen) * 28;
+            double rhy = (topEdge.Item1.Y + topEdge.Item2.Y) / 2 + (edx / elen) * 28;
+            TransformHandles.Add(new TransformHandleInfo { X = rhx - 5, Y = rhy - 5, Type = HandleType.Rotation });
+
+            RotationLineX1 = (topEdge.Item1.X + topEdge.Item2.X) / 2;
+            RotationLineY1 = (topEdge.Item1.Y + topEdge.Item2.Y) / 2;
+            RotationLineX2 = rhx;
+            RotationLineY2 = rhy;
+        }
+    }
+
+    private static Point2D RotatePoint(Point2D p, Point2D center, double deg)
+    {
+        double rad = deg * Math.PI / 180;
+        double cos = Math.Cos(rad);
+        double sin = Math.Sin(rad);
+        double dx = p.X - center.X;
+        double dy = p.Y - center.Y;
+        return new Point2D(center.X + dx * cos - dy * sin, center.Y + dx * sin + dy * cos);
+    }
+
+    private static Point2D ScalePoint(Point2D p, Point2D center, double sx, double sy)
+    {
+        return new Point2D(center.X + (p.X - center.X) * sx, center.Y + (p.Y - center.Y) * sy);
+    }
+
+    private void ApplyScaleFromHandle(Point2D startLocal, Point2D currentLocal)
+    {
+        if (SelectedShape == null || activeHandle == null) return;
+
+        bool scaleX = activeHandle is HandleType.TopLeft or HandleType.TopRight or
+            HandleType.MiddleLeft or HandleType.MiddleRight or
+            HandleType.BottomLeft or HandleType.BottomRight;
+        bool scaleY = activeHandle is HandleType.TopLeft or HandleType.TopCenter or
+            HandleType.TopRight or HandleType.BottomLeft or
+            HandleType.BottomCenter or HandleType.BottomRight;
+
+        if (scaleX)
+        {
+            double startDx = Math.Abs(startLocal.X - shapeCenter.X);
+            if (startDx >= 1)
+            {
+                double currentDx = Math.Abs(currentLocal.X - shapeCenter.X);
+                SelectedShape.ScaleX = Math.Max(0.05, initialScaleX * currentDx / startDx);
+            }
+        }
+
+        if (scaleY)
+        {
+            double startDy = Math.Abs(startLocal.Y - shapeCenter.Y);
+            if (startDy >= 1)
+            {
+                double currentDy = Math.Abs(currentLocal.Y - shapeCenter.Y);
+                SelectedShape.ScaleY = Math.Max(0.05, initialScaleY * currentDy / startDy);
+            }
+        }
     }
 
     private static double Distance(Point2D a, Point2D b)
