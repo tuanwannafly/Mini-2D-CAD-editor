@@ -133,6 +133,16 @@
             <ToggleButton Content="Snap Point" IsChecked="{Binding SnapToPointEnabled}" />
             <TextBlock Text="{Binding GridSize, StringFormat='Grid: {0:0}'}" VerticalAlignment="Center" Margin="4,0" />
             <Separator />
+            <TextBlock Text="Save as" VerticalAlignment="Center" Margin="4,0" />
+            <ComboBox ItemsSource="{Binding PersistenceFormats}"
+                      SelectedItem="{Binding SelectedPersistenceFormat}"
+                      Width="80" />
+            <TextBox Text="{Binding PersistencePath, UpdateSourceTrigger=PropertyChanged}"
+                     Width="160" Margin="4,0" />
+            <Button Content="Save" Command="{Binding SaveDrawingCommand}" />
+            <Button Content="Load" Command="{Binding LoadDrawingCommand}" />
+            <TextBlock Text="{Binding PersistenceStatus}" VerticalAlignment="Center" Margin="8,0" />
+            <Separator />
             <TextBlock Text="{Binding CurrentTool, StringFormat='Tool: {0}'}" VerticalAlignment="Center" Margin="8,0" />
         </ToolBar>
 
