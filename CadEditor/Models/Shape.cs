@@ -1,11 +1,18 @@
+using System.Text.Json.Serialization;
 using System.Windows.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace CadEditor.Models;
 
+[JsonPolymorphic(TypeDiscriminatorPropertyName = "$type")]
+[JsonDerivedType(typeof(LineShape), "line")]
+[JsonDerivedType(typeof(CircleShape), "circle")]
+[JsonDerivedType(typeof(RectangleShape), "rectangle")]
+[JsonDerivedType(typeof(PolygonShape), "polygon")]
+[JsonDerivedType(typeof(ArcShape), "arc")]
 public abstract partial class Shape : ObservableObject
 {
-    public Guid Id { get; } = Guid.NewGuid();
+    public Guid Id { get; init; } = Guid.NewGuid();
 
     [ObservableProperty]
     private bool isSelected;
@@ -38,7 +45,8 @@ public abstract partial class Shape : ObservableObject
         double dy = a.Y - b.Y;
         return Math.Sqrt(dx * dx + dy * dy);
     }
-}
+
+    [JsonIgnore]
     public Transform RenderTransform
     {
         get
