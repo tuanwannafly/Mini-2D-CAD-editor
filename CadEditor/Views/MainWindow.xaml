@@ -16,14 +16,26 @@
         <converters:TopLeftSizeToRectConverter x:Key="TopLeftSizeToRectConverter" />
         <converters:Point2DListToPointCollectionConverter x:Key="Point2DListToPointCollectionConverter" />
 
+        <Style x:Key="ShapeStrokeStyle" TargetType="Shape">
+            <Setter Property="Stroke" Value="{Binding StrokeColor}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                    <Setter Property="Stroke" Value="DeepSkyBlue" />
+                    <Setter Property="StrokeThickness" Value="3" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
         <DataTemplate DataType="{x:Type models:LineShape}">
             <Line X1="{Binding Start.X}" Y1="{Binding Start.Y}"
                   X2="{Binding End.X}" Y2="{Binding End.Y}"
-                  Stroke="{Binding StrokeColor}" StrokeThickness="{Binding StrokeThickness}" />
+                  StrokeThickness="{Binding StrokeThickness}"
+                  Style="{StaticResource ShapeStrokeStyle}" />
         </DataTemplate>
 
         <DataTemplate DataType="{x:Type models:CircleShape}">
-            <Path Stroke="{Binding StrokeColor}" StrokeThickness="{Binding StrokeThickness}" Fill="Transparent">
+            <Path StrokeThickness="{Binding StrokeThickness}" Fill="Transparent"
+                  Style="{StaticResource ShapeStrokeStyle}">
                 <Path.Data>
                     <EllipseGeometry Center="{Binding Center, Converter={StaticResource Point2DToPointConverter}}"
                                       RadiusX="{Binding Radius}" RadiusY="{Binding Radius}" />
@@ -32,7 +44,8 @@
         </DataTemplate>
 
         <DataTemplate DataType="{x:Type models:RectangleShape}">
-            <Path Stroke="{Binding StrokeColor}" StrokeThickness="{Binding StrokeThickness}" Fill="Transparent">
+            <Path StrokeThickness="{Binding StrokeThickness}" Fill="Transparent"
+                  Style="{StaticResource ShapeStrokeStyle}">
                 <Path.Data>
                     <RectangleGeometry>
                         <RectangleGeometry.Rect>
@@ -49,13 +62,15 @@
 
         <DataTemplate DataType="{x:Type models:PolygonShape}">
             <Polygon Points="{Binding Vertices, Converter={StaticResource Point2DListToPointCollectionConverter}}"
-                     Stroke="{Binding StrokeColor}" StrokeThickness="{Binding StrokeThickness}"
-                     Fill="Transparent" />
+                     StrokeThickness="{Binding StrokeThickness}"
+                     Fill="Transparent"
+                     Style="{StaticResource ShapeStrokeStyle}" />
         </DataTemplate>
 
         <DataTemplate DataType="{x:Type models:ArcShape}">
-            <Path Stroke="{Binding StrokeColor}" StrokeThickness="{Binding StrokeThickness}"
-                  StrokeDashArray="4 2" Fill="Transparent">
+            <Path StrokeThickness="{Binding StrokeThickness}"
+                  StrokeDashArray="4 2" Fill="Transparent"
+                  Style="{StaticResource ShapeStrokeStyle}">
                 <Path.Data>
                     <EllipseGeometry Center="{Binding Center, Converter={StaticResource Point2DToPointConverter}}"
                                       RadiusX="{Binding Radius}" RadiusY="{Binding Radius}" />
@@ -71,6 +86,8 @@
         </Grid.RowDefinitions>
 
         <ToolBar Grid.Row="0">
+            <Button Content="Select" Command="{Binding SelectToolCommand}"
+                    CommandParameter="{x:Static vm:DrawingTool.Select}" />
             <Button Content="Line" Command="{Binding SelectToolCommand}"
                     CommandParameter="{x:Static vm:DrawingTool.Line}" />
             <Button Content="Circle" Command="{Binding SelectToolCommand}"

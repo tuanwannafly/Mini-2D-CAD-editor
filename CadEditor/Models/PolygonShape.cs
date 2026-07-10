@@ -42,4 +42,46 @@ public partial class PolygonShape : Shape
         Vertices.RemoveAt(Vertices.Count - 1);
         OnPropertyChanged(nameof(Vertices));
     }
+
+    public override bool HitTest(Point2D point, double tolerance = 3.0)
+    {
+        int count = Vertices.Count;
+        if (count == 0) return false;
+
+        // Check distance to each edge segment first
+        for (int i = 0; i < count; i++)
+        {
+            var a = Vertices[i];
+            var b = Vertices[(i + 1) % count];
+            double dx = b.X - a.X;
+            double dy = b.Y - a.Y;
+            double lenSq = dx * dx + dy * dy;
+            if (lenSq < 1e-12)
+            {
+                if (Distance(point, a) <= tolerance) return true;
+                continue;
+            }
+            double t = Math.Clamp(((point.X - a.X) * dx + (point.Y - a.Y) * dy) / lenSq, 0, 1);
+            double cx = a.X + t * dx;
+            double cy = a.Y + t * dy;
+            if (Distance(point, new Point2D(cx, cy)) <= tolerance) return true;
+        }
+
+        // If count < 3, no interior
+        if (count < 3) return false;
+
+        // Ray casting for interior
+        bool inside = false;
+        for (int i = 0, j = count - 1; i < count; j = i++)
+        {
+            var vi = Vertices[i];
+            var vj = Vertices[j];
+            if ((vi.Y > point.Y) != (vj.Y > point.Y) &&
+                point.X < (vj.X - vi.X) * (point.Y - vi.Y) / (vj.Y - vi.Y) + vi.X)
+            {
+                inside = !inside;
+            }
+        }
+        return inside;
+    }
 }

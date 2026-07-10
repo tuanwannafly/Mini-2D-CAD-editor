@@ -11,7 +11,7 @@ public partial class MainViewModel : ViewModelBase
     public ObservableCollection<Shape> Shapes { get; } = new();
 
     [ObservableProperty]
-    private DrawingTool currentTool = DrawingTool.Line;
+    private DrawingTool currentTool = DrawingTool.Select;
 
     [ObservableProperty]
     private Shape? previewShape;
@@ -23,12 +23,16 @@ public partial class MainViewModel : ViewModelBase
     private bool canRedo;
 
     private readonly UndoRedoManager undoRedoManager = new();
+    private readonly QuadTree quadTree;
 
     private Point2D dragStart;
     private PolygonShape? polygonInProgress;
 
     public MainViewModel()
     {
+        // Use the full canvas size as the QuadTree bounds; expand dynamically if needed
+        quadTree = new QuadTree(new BoundingBox(0, 0, 2000, 2000), capacity: 8, maxDepth: 10);
+
         Shapes.Add(new LineShape(new Point2D(20, 20), new Point2D(200, 150)));
         Shapes.Add(new CircleShape(new Point2D(300, 100), 60));
         Shapes.Add(new RectangleShape(new Point2D(400, 50), 120, 80));
@@ -60,11 +64,16 @@ public partial class MainViewModel : ViewModelBase
 
     public void OnCanvasMouseDown(Point2D point)
     {
+        if (CurrentTool == DrawingTool.Select)
+        {
+            SelectShapeAt(point);
+            return;
+        }
+
         if (CurrentTool == DrawingTool.Polygon)
         {
             if (polygonInProgress == null)
             {
-                // vertex[0] = điểm chốt, vertex[1] = rubber-band bám chuột
                 polygonInProgress = new PolygonShape(new[] { point, point });
                 PreviewShape = polygonInProgress;
             }
@@ -87,6 +96,9 @@ public partial class MainViewModel : ViewModelBase
 
     public void OnCanvasMouseMove(Point2D point)
     {
+        if (CurrentTool == DrawingTool.Select)
+            return;
+
         if (CurrentTool == DrawingTool.Polygon)
         {
             polygonInProgress?.UpdateLastVertex(point);
@@ -98,8 +110,11 @@ public partial class MainViewModel : ViewModelBase
 
     public void OnCanvasMouseUp(Point2D point)
     {
+        if (CurrentTool == DrawingTool.Select)
+            return;
+
         if (CurrentTool == DrawingTool.Polygon)
-            return; // polygon commit qua click/Enter, không qua mouse-up
+            return;
 
         if (PreviewShape == null) return;
 
@@ -126,7 +141,7 @@ public partial class MainViewModel : ViewModelBase
     {
         if (polygonInProgress == null) return;
 
-        polygonInProgress.RemoveLastVertex(); // bỏ rubber-band chưa chốt
+        polygonInProgress.RemoveLastVertex();
 
         if (polygonInProgress.Vertices.Count >= 3)
         {
@@ -142,6 +157,35 @@ public partial class MainViewModel : ViewModelBase
     {
         polygonInProgress = null;
         PreviewShape = null;
+    }
+
+    private void SelectShapeAt(Point2D point)
+    {
+        quadTree.Rebuild(Shapes);
+        var candidates = quadTree.Query(point);
+
+        Shape? best = null;
+        int bestIndex = -1;
+        var seen = new HashSet<Guid>();
+
+        foreach (var candidate in candidates)
+        {
+            if (!seen.Add(candidate.Id))
+                continue;
+
+            if (!candidate.HitTest(point))
+                continue;
+
+            int index = Shapes.IndexOf(candidate);
+            if (index > bestIndex)
+            {
+                bestIndex = index;
+                best = candidate;
+            }
+        }
+
+        foreach (var shape in Shapes)
+            shape.IsSelected = shape == best;
     }
 
     private void UpdatePreviewShape(Point2D point)
